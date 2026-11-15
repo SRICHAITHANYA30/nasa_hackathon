@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deep Space Live Monitor</title>
+<style>
+/* THEMES: Earth side = deep space blue, spacecraft side = warm amber */
+:root{--bg:#050b1a;--pn:rgba(15,30,60,.78);--tx:#eaf1ff;--mu:#9fb2d4;--ac:#5aa9ff;--ac2:#8b7bff;--bd:rgba(110,160,255,.2);--ok:#3ddc97;--wn:#ffc24b;--cr:#ff6b7a;--glow:0 0 24px rgba(90,169,255,.18)}
+body.astro{--bg:#120e08;--pn:rgba(46,36,22,.8);--tx:#fbf3e4;--mu:#d2c2a4;--ac:#f0b45a;--ac2:#ff8a5c;--bd:rgba(240,180,90,.22);--glow:0 0 24px rgba(240,180,90,.14)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:15.5px/1.55 Inter,system-ui,"Segoe UI",Arial,sans-serif;color:var(--tx);min-height:100vh;background:
+ radial-gradient(1.2px 1.2px at 12% 18%,#fff9 50%,transparent 51%),radial-gradient(1px 1px at 74% 12%,#fff8 50%,transparent 51%),radial-gradient(1.5px 1.5px at 40% 70%,#fff7 50%,transparent 51%),radial-gradient(1px 1px at 88% 62%,#fff8 50%,transparent 51%),radial-gradient(1px 1px at 26% 90%,#fff6 50%,transparent 51%),
+ radial-gradient(900px 500px at 85% -10%,color-mix(in srgb,var(--ac) 16%,transparent),transparent),radial-gradient(800px 500px at -10% 110%,color-mix(in srgb,var(--ac2) 14%,transparent),transparent),var(--bg);background-attachment:fixed;transition:background .4s}
+h1{font-size:1.2rem;margin:0;font-weight:700;letter-spacing:.2px}h1 b{background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-size:.78rem;margin:0 0 .8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--mu);font-weight:700;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+h2::before{content:"";width:4px;height:14px;border-radius:2px;background:linear-gradient(var(--ac),var(--ac2))}
+h3{font-size:.8rem;margin:1rem 0 .4rem;color:var(--mu);text-transform:uppercase;letter-spacing:.08em}
+button,select,input,textarea{font:inherit;color:var(--tx);background:color-mix(in srgb,var(--bg) 70%,#fff 4%);border:1px solid var(--bd);border-radius:10px;padding:.5rem .8rem;transition:.15s}
+button{cursor:pointer;background:color-mix(in srgb,var(--ac) 10%,transparent);border-color:color-mix(in srgb,var(--ac) 45%,transparent);font-weight:600;font-size:.9rem}
+button:hover{background:color-mix(in srgb,var(--ac) 24%,transparent);transform:translateY(-1px);box-shadow:var(--glow)}
+button:active{transform:none}
+button[aria-pressed=true]{background:var(--ac);color:#04101f;border-color:var(--ac)}
+textarea{resize:vertical}
+:focus-visible{outline:3px solid var(--wn);outline-offset:2px}
+header{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;padding:.7rem 1.2rem;position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)}
+header .sp{flex:1}.brand{display:flex;align-items:center;gap:.6rem}
+.logo{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(from 200deg,var(--ac),var(--ac2),var(--ac));color:#04101f;font-weight:900;box-shadow:var(--glow)}
+.role{border:1px solid var(--ac);padding:.25rem .75rem;border-radius:999px;font-weight:700;font-size:.8rem;color:var(--ac);background:color-mix(in srgb,var(--ac) 10%,transparent)}
+.pill{display:inline-flex;align-items:center;gap:.45rem;padding:.25rem .75rem;border-radius:999px;font-size:.8rem;font-weight:700;border:1px solid;font-variant-numeric:tabular-nums}
+.pill i{width:9px;height:9px;border-radius:50%;background:currentColor;animation:pu 1.6s infinite}
+.pill.ok{color:var(--ok)}.pill.wn{color:var(--wn)}.pill.cr{color:var(--cr)}
+@keyframes pu{0%{box-shadow:0 0 0 0 currentColor}70%,100%{box-shadow:0 0 0 7px transparent}}
+main{padding:1.1rem 1.2rem 2rem;display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));max-width:1500px;margin:auto}
+.card{background:var(--pn);border:1px solid var(--bd);border-radius:16px;padding:1.1rem 1.2rem;min-width:0;backdrop-filter:blur(8px);box-shadow:0 8px 30px #0005,inset 0 1px 0 #ffffff0d}
+.wide{grid-column:1/-1}
+.num{font-size:2.3rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.5px}.unit{font-size:.9rem;color:var(--mu);font-weight:500;letter-spacing:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:.7rem}
+.mini{border:1px solid var(--bd);border-radius:12px;padding:.7rem .8rem;background:linear-gradient(160deg,color-mix(in srgb,var(--ac) 9%,transparent),transparent 70%),color-mix(in srgb,var(--bg) 60%,transparent)}
+.mini small{text-transform:uppercase;letter-spacing:.08em;font-size:.7rem}
+.mini .num{font-size:1.7rem}
+.why{font-size:.75rem;padding:.12rem .6rem;margin-top:.35rem;border-radius:999px;font-weight:600;opacity:.85}
+.b{display:inline-block;padding:.08rem .6rem;border-radius:999px;font-weight:700;font-size:.78rem;border:1px solid;background:color-mix(in srgb,currentColor 12%,transparent)}
+.b-ok,.b-info{color:var(--ok);border-color:var(--ok)}.b-wn,.b-warning{color:var(--wn);border-color:var(--wn)}.b-cr,.b-critical{color:var(--cr);border-color:var(--cr)}
+.ban{padding:.75rem 1.2rem;font-weight:600;border-left:6px solid;margin:0;font-size:.92rem}
+.ban.wn{background:linear-gradient(90deg,#5a3f0088,transparent);border-color:var(--wn);color:#ffe3a6}.ban.cr{background:linear-gradient(90deg,#6b141c88,transparent);border-color:var(--cr);color:#ffd3d6}.ban.dm{background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 14%,transparent),transparent);border-color:var(--ac);color:var(--mu);font-weight:400;font-size:.82rem;padding:.45rem 1.2rem}
+.ban.flash{animation:fl 1s 3}@keyframes fl{50%{filter:brightness(1.7)}}
+.al{border-left:4px solid;padding:.5rem .8rem;margin:.45rem 0;background:#0003;border-radius:8px;font-size:.88rem}
+.al.s-info{border-color:var(--ok)}.al.s-warning{border-color:var(--wn)}.al.s-critical{border-color:var(--cr)}
+.cap{font-size:.86rem;color:var(--mu);margin:.4rem 0;padding:.5rem .7rem;border-radius:8px;background:#0003}.lg{font-size:.78rem;color:var(--mu)}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 5px 0 12px;vertical-align:middle}
+figure{margin:0 0 1rem}figcaption{font-weight:700;margin-bottom:.3rem}svg{width:100%;height:auto;display:block}svg text{fill:var(--mu);font-size:10px}
+svg polyline{filter:drop-shadow(0 0 4px currentColor);stroke-linejoin:round;stroke-linecap:round}
+.rb{display:grid;grid-template-columns:110px 1fr 120px;gap:.6rem;align-items:center;width:100%;margin:.35rem 0;text-align:left;padding:.4rem .6rem;font-weight:500}
+.bar{height:12px;background:#0006;border:1px solid var(--bd);border-radius:7px;overflow:hidden}.bar i{display:block;height:100%;border-radius:7px;box-shadow:0 0 10px currentColor;transition:width .5s}
+table{border-collapse:collapse;width:100%;font-size:.88rem}th{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mu)}th,td{border-bottom:1px solid var(--bd);padding:.55rem .5rem;text-align:left}tbody tr:hover,tr:hover td{background:#ffffff07}
+.sc{overflow-x:auto}dialog{background:color-mix(in srgb,var(--bg) 90%,#fff 4%);color:var(--tx);border:1px solid var(--ac);border-radius:16px;max-width:660px;width:92%;box-shadow:0 20px 80px #000a,var(--glow)}dialog::backdrop{background:#000b;backdrop-filter:blur(4px)}
+canvas{width:100%;height:auto;background:radial-gradient(circle at 10% 50%,#12315e,#040a16 70%);border:1px solid var(--bd);border-radius:12px;display:block;margin:.5rem 0}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;margin:.6rem 0}.log{max-height:230px;overflow:auto;font-size:.85rem;font-family:ui-monospace,Consolas,monospace}.log p{margin:.2rem 0;padding:.2rem 0;border-bottom:1px solid var(--bd)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:8px}
+#login{max-width:420px;margin:8vh auto;padding:1.5rem}#login input{width:100%;margin:.3rem 0 .8rem}
+.err{color:var(--cr);font-weight:700}small{color:var(--mu)}
+@media(max-width:520px){.rb{grid-template-columns:80px 1fr 90px}.num{font-size:1.8rem}header{padding:.6rem .8rem}main{padding:.8rem}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.crewg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:1rem}
+.crew{border:1px solid var(--bd);border-radius:14px;padding:1rem;background:linear-gradient(160deg,color-mix(in srgb,var(--ac) 8%,transparent),transparent 60%),#0003;border-top:3px solid var(--ok)}
+.crew.c-wn{border-top-color:var(--wn)}.crew.c-cr{border-top-color:var(--cr);box-shadow:0 0 22px #ff6b7a33}
+.ch{display:flex;align-items:center;gap:.7rem;margin-bottom:.7rem}.ch>div{flex:1}
+.av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#04101f;background:linear-gradient(135deg,var(--ac),var(--ac2))}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.5rem}.dg .num{font-size:1.6rem}
+.dbar{position:relative;height:12px;background:#0006;border:1px solid var(--bd);border-radius:7px;margin:.3rem 0}.dbar i{display:block;height:100%;border-radius:7px;box-shadow:0 0 10px currentColor;transition:width .5s}
+.dbar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff6}
+.vt{display:flex;flex-wrap:wrap;gap:.4rem;margin:.6rem 0 0}.vt span{font-size:.8rem;padding:.15rem .6rem;border-radius:999px;border:1px solid var(--bd);background:#0003;font-variant-numeric:tabular-nums}
+.stale .crewg{opacity:.6;filter:grayscale(.5)}
+[hidden]{display:none!important}
+.ctl{display:flex;flex-wrap:wrap;gap:.6rem;padding:.7rem 1.2rem;border-bottom:1px solid var(--bd)}
+.cb{display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;text-align:left;flex:1 1 170px;max-width:260px;padding:.6rem .9rem}
+.cb b{font-size:.95rem}.cb small{font-weight:400;color:var(--mu);font-size:.75rem;line-height:1.3}
+.tabs{display:flex;flex-wrap:wrap;gap:.5rem}.tb{padding:.65rem 1.1rem;font-size:.95rem}
+.scrow{display:flex;flex-wrap:wrap;gap:1.6rem;align-items:center}
+.ring{--p:0;width:170px;height:170px;border-radius:50%;display:grid;place-items:center;text-align:center;background:conic-gradient(var(--ac) calc(var(--p)*1%),color-mix(in srgb,var(--bg) 70%,#fff 8%) 0)}
+.ring>div{width:136px;height:136px;border-radius:50%;display:grid;place-content:center;background:var(--bg)}
+.scan.due{border-color:var(--wn);box-shadow:0 0 30px #ffc24b44}.scan.due .ring{background:conic-gradient(var(--wn) 100%,transparent 0)}
+.scm{font-size:1.25rem;font-weight:700;margin:.2rem 0}
+.big{font-size:1.1rem;padding:.8rem 1.6rem;background:var(--ac);color:#04101f;border-color:var(--ac)}
+.scan.due .big{background:var(--wn);border-color:var(--wn);animation:pu2 1.2s infinite}
+@keyframes pu2{50%{filter:brightness(1.3)}}
+.sst{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}.sst span{font-size:.8rem;padding:.15rem .6rem;border-radius:999px;border:1px solid var(--bd)}
+.rf{margin:.45rem 0;padding:.4rem .6rem;border:1px solid var(--bd);border-radius:10px;background:#0002}
+.rfh{display:grid;grid-template-columns:105px 1fr 105px;gap:.5rem;align-items:center;font-size:.85rem;font-weight:600}
+.rfp{font-size:.74rem;color:var(--mu);margin-top:.25rem;line-height:1.4}.rfp b{color:var(--tx);font-weight:600}
+.scg{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:1rem}
+.stile{border:1px solid var(--bd);border-radius:14px;padding:1rem;background:linear-gradient(160deg,color-mix(in srgb,var(--ac) 8%,transparent),transparent 60%),#0003}
+.stile.busy{border-color:var(--wn);box-shadow:0 0 22px #ffc24b44}
+.stT{font-size:2.3rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.sinfo{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.4rem 0 .6rem;font-size:.9rem}.sinfo small{display:block;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem}
+.sres{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.3rem}.sres span{font-size:.8rem;padding:.15rem .6rem;border-radius:999px;border:1px solid var(--bd);background:#0003}
+.gsrow{display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;margin:.2rem 0 .5rem}.gsrow .pill{font-size:.95rem;padding:.35rem .9rem}
+</style></head><body>
+<div id="login" class="card"></div>
+<div id="app" hidden></div>
+<dialog id="dlg"><div id="dlgc"></div><button onclick="$('dlg').close()">Close</button></dialog>
+<script>
+/* ===== 1. CONSTANTS AND HELPERS ===== */
+const $=id=>document.getElementById(id), f1=x=>(Math.round(x*10)/10).toFixed(1), clk=t=>new Date(t).toLocaleTimeString();
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length, cl=x=>Math.max(0,Math.min(100,Math.round(x)));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SCANMS=60000,LIMIT=600, DAYMS=3000, NOTE='Simulated / illustrative data. Not real mission or medical data.';
+const USERS={ground:{p:'ground123',role:'ground',name:'Ground Control'},astro:{p:'astro123',role:'astro',name:'Astronaut'}};
+// d = one-way delay in demo seconds; pen = signal lost to distance (%); n/o = neutron / other dose mSv per day
+const MI={ISS:{dist:'about 400 km',d:1,real:'about 0.001 s',pen:5,n:.2,o:.5,len:180,iso:'Low',isoN:1},
+ Moon:{dist:'about 384,400 km',d:3,real:'about 1.3 s',pen:15,n:.5,o:.9,len:180,iso:'Medium',isoN:2},
+ Mars:{dist:'about 225 million km (average)',d:10,real:'3 to 22 minutes (scaled down to 10 s here)',pen:35,n:.7,o:1.1,len:180,iso:'High',isoN:3}};
+const CREW=[{n:'Amara Okoye',df:1.00,hr:58,sl:7.5,ex:55},{n:'Jonas Weber',df:0.92,hr:62,sl:7.3,ex:45},{n:'Mei Tanaka',df:1.08,hr:60,sl:7.6,ex:65}];
+const RN={sleep:'Sleep',cardio:'Cardiovascular',radiation:'Radiation',bone:'Bone and fitness',behav:'Behavioral',overall:'Overall'};
+let tab='scan',role=null,view=null,selA=0,selG=0,selC=0,tplReason='',TP=[],lastRx=0,dots=[],lastSpawn=0,demoT=[];
+const BC=('BroadcastChannel' in window)?new BroadcastChannel('dslm'):null;
+// deterministic pseudo-random in [-1,1] so both tabs get the same "daily noise"
+function rnd(d,i,k){const x=Math.sin((d+((S&&S.seed)||0))*12.9898+i*78.233+k*37.7)*43758.5453;return (x-Math.floor(x))*2-1}
+
+/* ===== 2. SHARED MISSION STATE (one object, synced between tabs) ===== */
+let S;
+function init(m,seed){S={mission:m,seed:seed||0,rl:{storm:0,block:0,noise:0},day:0,paused:false,lastDay:Date.now(),fl:{sleep:0,spe:0,tread:0},storm:false,block:false,
+ H:[[],[],[]],dose:{n:[],o:[]},alerts:[],queue:[],fly:[],rx:[],mf:[],inbox:[],cmds:[],pings:[],log:[],demo:null,
+ link:{st:'Strong',pct:100,lat:1,loss:0,why:''},scan:newScan()};
+ updateLink(true);for(let k=0;k<14;k++)newDay(true);
+ E('both','Mission set to '+m+'. '+NOTE+' The first 14 days were pre-generated so the graphs have history.')}
+function E(r,t){S.log.unshift({r,t,at:Date.now(),day:S.day});if(S.log.length>80)S.log.pop()}
+const tot=()=>S.dose.n.reduce((s,x)=>s+x,0)+S.dose.o.reduce((s,x)=>s+x,0);
+
+/* ===== 3. SIMULATION: daily vitals, dose, risks, alerts ===== */
+function newDay(pre){S.day++;const d=S.day,M=MI[S.mission],spe=d<=S.fl.spe;
+ S.dose.n.push(M.n*(1+.1*rnd(d,9,1))*(spe?6:1));S.dose.o.push(M.o*(1+.1*rnd(d,9,2))*(spe?3:1));
+ CREW.forEach((c,i)=>{const sf=d<=S.fl.sleep,tf=d<=S.fl.tread,dr=M.isoN*2*d/M.len;
+  let hr=c.hr+rnd(d,i,1)*1.5+dr,sl=c.sl+rnd(d,i,2)*.4-(M.isoN-1)*.2,sp=97.6+rnd(d,i,3)*.5-(spe?1:0)-(sf?.3:0),ex=c.ex+rnd(d,i,5)*8;
+  const w={hr:['baseline '+c.hr+' bpm','daily noise','isolation drift +'+f1(dr)+' bpm'],sl:['baseline '+c.sl+' h','daily noise','isolation level '+M.iso+' -'+f1((M.isoN-1)*.2)+' h'],sp:['baseline 97.6 %','daily noise'],ex:['baseline '+c.ex+' min','daily noise']};
+  if(sf){hr+=6;sl-=2.4;w.hr.push('sleep-loss fault +6 bpm');w.sl.push('sleep-loss fault -2.4 h')}
+  if(tf){hr+=3;ex*=.15;w.hr.push('treadmill failure +3 bpm');w.ex.push('treadmill failure x0.15')}
+  if(spe)w.sp.push('solar particle event -1.0 %');if(rnd(d,i,4)>.96){sp=94.2;w.sp.push('random dip to 94.2 %')}
+  S.H[i].push({d,hr:Math.round(hr),sl:Math.round(sl*10)/10,sp:Math.round(sp*10)/10,ex:Math.round(ex),w})});
+ if(pre){CREW.forEach((c,i)=>S.rx.push({...mkPkt(i,'daily'),rxAt:Date.now(),pre:1}));return}
+ randLink(d);
+ checkAlerts();CREW.forEach((c,i)=>sendPkt(mkPkt(i,'daily')))}
+function randLink(d){const q=Math.random,R=(a,b)=>a+Math.floor(q()*(b-a+1));
+ S.rl.noise=q()<.5?0:R(8,30);
+ if(d>S.rl.storm&&q()<.18){S.rl.storm=d+R(0,2);E('both','Random event: solar interference began (about '+(S.rl.storm-d+1)+' day(s)).')}
+ if(d>S.rl.block&&q()<.10){S.rl.block=d+R(0,1);E('both','Random event: spacecraft antenna dropout began (about '+(S.rl.block-d+1)+' day(s)).')}}
+function risks(i){const h=S.H[i],n=h.length,M=MI[S.mission],av=(k,f)=>mean(h.slice(-k).map(x=>x[f])),R={};
+ const sl=av(3,'sl'),hr=av(3,'hr'),sp=av(3,'sp'),ex=av(7,'ex'),cum=tot()*CREW[i].df,pct=cum/LIMIT*100,today=(S.dose.n[n-1]+S.dose.o[n-1])*CREW[i].df,base=(M.n+M.o)*CREW[i].df,prog=S.day/M.len*20;
+ const mk=(rule,parts)=>({rule,parts:parts.map(p=>[p[0],p[1],Math.max(0,Math.round(p[2]))]),s:cl(parts.reduce((s,p)=>s+Math.max(0,p[2]),0))});
+ R.sleep=mk('Level rises as the 3-day average sleep falls below 7.5 h',[['3-day average sleep',f1(sl)+' h',(7.5-sl)/3*100]]);
+ R.cardio=mk('Combines heart rate above normal, low exercise and low SpO2',[['3-day average heart rate',f1(hr)+' bpm',(hr-60)/30*60],['7-day average exercise',Math.round(ex)+' min',ex<30?20:0],['3-day average SpO2',f1(sp)+' %',(96-sp)*10]]);
+ R.radiation=mk('Based on the share of the 600 mSv limit used, raised if today is over 2x the normal daily dose',[['Cumulative dose vs limit',f1(pct)+' %',pct],['Dose today vs normal '+f1(base),f1(today)+' mSv',today>2*base?15:0]]);
+ R.bone=mk('Based on low exercise and how far into the mission the crew is',[['7-day average exercise',Math.round(ex)+' min',(60-ex)/60*80],['Mission progress',S.day+' days in',prog]]);
+ R.behav=mk('Based on isolation level, sleep risk and mission progress',[['Isolation level',M.iso,M.isoN*10],['Sleep risk',lvl(R.sleep.s)[0],R.sleep.s*.4],['Mission progress',S.day+' days in',prog]]);
+ const W={sleep:.25,cardio:.2,radiation:.2,bone:.15,behav:.2};
+ R.overall=mk('Weighted mix: sleep 25%, cardiovascular 20%, radiation 20%, bone 15%, behavioral 20%',Object.keys(W).map(k=>[RN[k]+' (weight '+Math.round(W[k]*100)+'%)',lvl(R[k].s)[0],R[k].s*W[k]]));
+ return R}
+const lvl=s=>s<35?['Low','ok']:s<65?['Moderate','wn']:['High','cr'];
+function checkAlerts(){const d=S.day,M=MI[S.mission],base=M.n+M.o,today=S.dose.n[d-1]+S.dose.o[d-1];
+ const add=(c,rule,thr,act,cause,action,sev)=>{S.alerts.unshift({d,c,rule,thr,act,cause,action,sev});E('astro','Day '+d+' alert ('+sev+') for '+c+': '+rule+'. Rule '+thr+', actual '+act+'. Raised on the spacecraft, no Earth link needed.')};
+ CREW.forEach((c,i)=>{const h=S.H[i][d-1],a=S.H[i].slice(-3).map(x=>x.hr),b=S.H[i].slice(-10,-3).map(x=>x.hr);
+  if(h.sp<95)add(c.n,'SpO2 low','under 95 %',h.sp+' %','Sensor fit, cabin air quality, or radiation stress','Check sensor and cabin CO2, rest, re-measure in 1 hour',h.sp<92?'critical':'warning');
+  if(h.sl<6)add(c.n,'Sleep short','under 6 h',h.sl+' h','Disrupted sleep (noise, schedule, or sleep-loss fault)','Protect an 8 h sleep window, dim lights, review schedule',h.sl<4.5?'critical':'warning');
+  if(b.length>=3&&mean(a)-mean(b)>5)add(c.n,'Heart rate trend rising','3-day mean more than 5 bpm above prior 7 days','+'+f1(mean(a)-mean(b))+' bpm','Poor sleep or reduced exercise','Report resting heart rate daily, reduce stress load','warning')});
+ if(today>2*base)add('All crew','Dose spike','over 2x normal daily dose ('+f1(base)+' mSv)',f1(today)+' mSv','Solar particle event','Move to the shielded module until the dose rate falls','critical')}
+function checkLog(){}
+function mkPkt(i,kind){const h=S.H[i][S.H[i].length-1],R=risks(i),rs={};Object.keys(R).forEach(k=>rs[k]=R[k].s);
+ return {i,d:h.d,hr:h.hr,sl:h.sl,sp:h.sp,ex:h.ex,rs,gen:Date.now(),kind}}
+
+/* ===== 4. LINK MODEL: strength = 100 minus named penalties ===== */
+function updateLink(first){const M=MI[S.mission],p=[['distance',M.pen]];
+ if(S.rl.noise>0)p.push(['random interference',S.rl.noise]);if(S.day<=S.rl.storm)p.push(['random solar storm',30]);if(S.day<=S.rl.block)p.push(['random antenna dropout',100]);if(S.storm)p.push(['solar storm',30]);if(S.day<=S.fl.spe&&S.day>0)p.push(['solar particle event',10]);if(S.block)p.push(['antenna blocked',100]);
+ const pct=Math.max(0,100-p.reduce((s,x)=>s+x[1],0)),st=pct>=60?'Strong':pct>=25?'Weak':'Lost',prev=S.link.st;
+ S.link={st,pct,loss:st=='Lost'?100:st=='Weak'?Math.round((60-pct)*1.5+5):0,lat:st=='Lost'?null:M.d*(1+(100-pct)/100),
+  why:st+' ('+pct+'%): '+p.map(x=>x[0]+' -'+x[1]+'%').join(', ')};
+ if(first||prev==st)return false;
+ E('both','Signal changed '+prev+' to '+st+'. '+S.link.why+'.');
+ if(prev=='Lost'||st=='Strong')flushQ();return true}
+function flushQ(){if(!S.queue.length||S.link.st=='Lost')return;const n=S.queue.length;
+ S.queue.forEach((p,k)=>S.fly.push({p:{...p,late:1},due:Date.now()+S.link.lat*1000+k*350}));S.queue=[];
+ E('both','Link is usable again, so the spacecraft sent '+n+' queued packets, oldest first. They arrive flagged "late" because they were generated while the link was down.')}
+function sendPkt(p){const L=S.link;
+ if(L.st=='Lost'){S.queue.push(p);E('astro','Link lost: '+CREW[p.i].n+' '+p.kind+' packet for day '+p.d+' was stored in the offline queue.');return}
+ if(L.st=='Weak'&&Math.random()*100<L.loss){S.queue.push(p);E('astro','Weak link dropped a packet (loss '+L.loss+'%). It waits in the queue until the link is Strong.');return}
+ S.fly.push({p,due:Date.now()+L.lat*1000})}
+
+/* ===== 5. TICK: runs 4x per second ===== */
+let hb=0;
+function tick(){if(!S)return;const now=Date.now();let ch=false;
+ const owner=role=='ground'||now-lastRx>3000; // astronaut tab only simulates if no Ground tab is broadcasting
+ if(owner){
+  if(S.paused)S.lastDay=now;else{let n=0;while(now-S.lastDay>=DAYMS&&S.day<MI[S.mission].len&&n<5){S.lastDay+=DAYMS;newDay();ch=true;n++}if(now-S.lastDay>=DAYMS)S.lastDay=now} /* exactly 3 s per day: the clock advances by DAYMS, not by 'now', so timer jitter never adds up */
+  if(updateLink())ch=true; else{const o=S.link.st;updateLink()}
+  if(S.scan&&S.scan.a){const sc=S.scan;if(S.paused)sc.a.forEach(x=>{x.next+=now-(sc.tp||now);if(x.busy)x.busy+=now-(sc.tp||now)});sc.tp=now;
+   if(!S.paused)sc.a.forEach((x,i)=>{if(x.busy&&now>=x.busy){finishScan(i,now);ch=true}else if(!x.busy&&now>=x.next){x.busy=now+2500;E('astro',CREW[i].n+' scan started (automatic, every '+sc.int/1000+' s).');ch=true}})}
+  S.fly=S.fly.filter(f=>{if(f.due>now)return true;S.rx.push({...f.p,rxAt:now});ch=true;
+   E('ground',CREW[f.p.i].n+' '+f.p.kind+' packet (day '+f.p.d+') received'+(f.p.late?' LATE from the queue':'')+' after '+f1((now-f.p.gen)/1000)+' s.');return false});
+  S.mf=S.mf.filter(m=>{if(m.due>now)return true;if(S.link.st=='Lost'){const c=S.cmds.find(x=>x.id==m.id);if(c&&!/^On hold/.test(c.status)){c.status='On hold: link lost, will deliver when link returns';E('ground','Message to '+CREW[m.to].n+' is on hold. It will arrive when the link returns.');ch=true}return true}S.inbox.unshift({...m,recvAt:now,recvDay:S.day});
+   const c=S.cmds.find(x=>x.id==m.id);if(c)c.status='Delivered at '+clk(now);E('astro','Message from Ground received by '+CREW[m.to].n+' after the signal delay.');ch=true;return false});
+ }
+ if(owner&&S.H[0].length){const slot=(now-S.lastDay)<DAYMS/2?0:1;
+  if(!S.live||S.live.d!=S.day||S.live.slot!=slot){S.live={d:S.day,slot,at:now,n:slot+1,v:CREW.map((c,i)=>{const h=S.H[i][S.H[i].length-1];return {hr:Math.round(h.hr+rnd(S.day,i,20+slot)*2),sp:Math.round((h.sp+rnd(S.day,i,30+slot)*.3)*10)/10}})};
+   E('both','Health check '+(slot+1)+' of 2 for day '+S.day+' ('+(slot?'evening':'morning')+'): all 3 astronauts measured.');ch=true}}
+ if(ch||now-hb>1000){if(BC&&owner)BC.postMessage(S);hb=now}
+ if(ch)render()}
+function act(fn){fn();if(BC)BC.postMessage(S);render()}
+if(BC)BC.onmessage=e=>{S=e.data;lastRx=Date.now();if(role)render()};
+
+/* ===== 6. EXPLAINABLE CHARTS (plain SVG) ===== */
+function line(o){const W=400,H=210,L=46,R=10,T=10,B=36,all=o.s.flatMap(s=>s.d);let lo=o.min!=null?o.min:Math.min(...all),hi=Math.max(...all);
+ if(o.band){lo=Math.min(lo,o.band[0]);hi=Math.max(hi,o.band[1])}if(o.hl)hi=Math.max(hi,o.hl[0]*1.08);if(o.zmax)hi=Math.max(hi,o.zmax);if(hi==lo)hi++;
+ const n=o.s[0].d.length,X=i=>L+(n>1?i/(n-1):0)*(W-L-R),Y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B);let g='';
+ (o.zones||[]).forEach(z=>{const a=Y(Math.min(z[1],hi)),b=Y(Math.max(z[0],lo));if(b>a)g+=`<rect x="${L}" y="${a}" width="${W-L-R}" height="${b-a}" fill="${z[2]}" opacity=".3"/>`});
+ if(o.band)g+=`<rect x="${L}" y="${Y(o.band[1])}" width="${W-L-R}" height="${Y(o.band[0])-Y(o.band[1])}" fill="#46e08c" opacity=".2"/>`;
+ for(let k=0;k<5;k++){const v=lo+(hi-lo)*k/4;g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#8884" /><text x="${L-4}" y="${Y(v)+3}" text-anchor="end">${v>=100?Math.round(v):f1(v)}</text>`}
+ [0,Math.floor((n-1)/2),n-1].forEach(k=>g+=`<text x="${X(k)}" y="${H-B+12}" text-anchor="middle">${o.days[k]}</text>`);
+ o.s.forEach(s=>g+=`<polyline fill="none" stroke="${s.c}" stroke-width="2.5" points="${s.d.map((v,i)=>X(i)+','+Y(v)).join(' ')}"/>`);
+ if(o.hl)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(o.hl[0])}" y2="${Y(o.hl[0])}" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="6 4"/>`;
+ g+=`<text x="${(L+W)/2}" y="${H-4}" text-anchor="middle">${o.xl}</text><text transform="translate(10 ${(T+H-B)/2}) rotate(-90)" text-anchor="middle">${o.yl}</text>`;
+ const lg=o.s.map(s=>`<i style="background:${s.c}"></i>${s.n}`).join('')+(o.band?`<i style="background:#46e08c"></i>Normal range`:'')+(o.hl?`<i style="background:#ff6b6b"></i>${o.hl[1]}`:'')+(o.zones?o.zones.map(z=>`<i style="background:${z[2]}"></i>${z[3]}`).join(''):'');
+ return `<figure><figcaption>${o.t}</figcaption><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.t}">${g}</svg><div class="lg">${lg}</div><p class="cap"><b>What this means:</b> ${o.cap}</p></figure>`}
+function win(arr,k){const a=arr.slice(-k),st=Math.ceil(a.length/100);return a.filter((_,i)=>i%st==0||i==a.length-1)}
+function vchart(i,f,t,yl,lo,hi,c,unit){const h=S.H[i],a=h.slice(-40),v=a.map(x=>x[f]),last=v[v.length-1],dl=last-(v[Math.max(0,v.length-8)]);
+ return line({t,xl:'Mission day',yl,s:[{n:CREW[i].n,c,d:v}],band:[lo,hi],days:a.map(x=>x.d),min:f=='sp'?92:undefined,
+ cap:`Latest ${last} ${unit} is ${last<lo?'below':last>hi?'above':'inside'} the normal range (${lo} to ${hi} ${unit}). Change over the last 7 days: ${dl>=0?'+':''}${f1(dl)} ${unit}. Hover the Why button on the card above for the causes.`})}
+
+/* ===== 7. SHARED PANELS ===== */
+const badge=(c,t)=>`<span class="b b-${c}">${t}</span>`;
+const whyB=k=>`<button class="why" onclick="why('${k}')">Why?</button>`;
+const mini=(l,v,u,k)=>`<div class="mini"><small>${l}</small><div class="num">${v} <span class="unit">${u}</span></div>${whyB(k)}</div>`;
+function why(k){const [a,b]=k.split(':'),M=MI[S.mission];let h='';const tb=(t,r,ps)=>`<h2>${t}</h2><p><b>Rule:</b> ${r}</p><table><tr><th>Input</th><th>Current value</th></tr>${ps.map(p=>`<tr><td>${p[0]}</td><td>${p[1]}</td></tr>`).join('')}</table><p><small>${NOTE}</small></p>`;
+ if(a=='r'){const R=risks(selA)[b];h=tb(RN[b]+' risk for '+CREW[selA].n+': '+lvl(R.s)[0],R.rule,R.parts)}
+ else if(a=='g'){const p=latestRx(+b);h=tb('Risk levels last received for '+CREW[+b].n+' (day '+p.d+')','These levels were calculated on the spacecraft and sent in the packet. Ground cannot recalculate them, so they are as old as the packet.',Object.keys(RN).map(k=>[RN[k],lvl(p.rs[k])[0],p.rs[k]]))}
+ else if(a=='v'){const x=S.H[selA][S.H[selA].length-1];h=`<h2>Why is ${CREW[selA].n}'s ${b} value ${x[b]}?</h2><p>Simulated as: ${x.w[b].join(', ')}.</p><p><small>${NOTE}</small></p>`}
+ else if(a=='d'){const n=S.dose.n.length,dn=S.dose.n[n-1],dt=S.dose.o[n-1];const c=tot();
+  const m={today:['Dose today',f1(dn+dt)+' mSv','Mission baseline '+f1(M.n)+' neutron + '+f1(M.o)+' other mSv/day, plus about 10% daily noise. A solar particle event multiplies neutron x6 and other x3. Today: neutron '+f1(dn)+', other '+f1(dt)+'.'],
+   cum:['Total dose',f1(c)+' mSv','Sum of every day since day 1 (neutron + other). '+n+' days so far.'],
+   nsh:['Neutron share',f1(dn/(dn+dt)*100)+' %','Neutron dose today divided by total dose today. Neutrons weigh more biologically, so a high share is worth watching.'],
+   pct:['Percent of limit',f1(c/LIMIT*100)+' %','Total dose '+f1(c)+' mSv divided by the illustrative 600 mSv reference limit.']}[b];h=`<h2>${m[0]}: ${m[1]}</h2><p>${m[2]}</p><p><small>${NOTE}</small></p>`}
+ else if(a=='l'){const L=S.link;h=`<h2>Signal: ${L.why}</h2><p>Strong is 60% or more, Weak is 25 to 59%, Lost is under 25%. Latency = one-way delay ${M.d} s x (1 + missing strength). Packet loss rises as strength falls below 60%.</p><p>Real one-way delay for ${S.mission}: ${M.real}.</p>`}
+ $('dlgc').innerHTML=h;$('dlg').showModal()}
+function radPanel(i){const n=S.dose.n.length,M=MI[S.mission],c=tot(),dn=S.dose.n[n-1],dt=dn+S.dose.o[n-1],avg=c/n,ld=Math.ceil(LIMIT/avg);let cum=0;const cu=S.dose.n.map((x,k)=>cum+=x+S.dose.o[k]);
+ const dd=win(S.dose.n.map((x,k)=>x+S.dose.o[k]),60),dnn=win(S.dose.n,60),dy=win(S.dose.n.map((_,k)=>k+1),60);
+ const cap=`At the average rate so far, the 600 mSv limit would be reached around day ${ld}.`;
+ return `<h2>Radiation</h2><div class="cards">${mini('Dose today',f1(dt),'mSv','d:today')}${mini('Total dose',f1(c),'mSv','d:cum')}${mini('Neutron share',f1(dn/dt*100),'%','d:nsh')}${mini('Of 600 mSv limit',f1(c/LIMIT*100),'%','d:pct')}</div>
+ ${line({t:'Daily dose (last 60 days)',xl:'Mission day',yl:'Dose, mSv per day',s:[{n:'Total',c:'#ffbe3d',d:dd},{n:'Neutron',c:'#6db3ff',d:dnn}],days:dy,min:0,cap:`Today is ${f1(dt)} mSv, with neutrons at ${f1(dn/dt*100)}%. ${dt>2*(M.n+M.o)?'This is a dose spike, over 2x normal.':'This is near the normal level for '+S.mission+'.'}`})}
+ ${line({t:'Cumulative dose vs illustrative limit',xl:'Mission day',yl:'Total dose, mSv',s:[{n:'Cumulative',c:'#ffffff',d:win(cu,120)}],days:win(cu.map((_,k)=>k+1),120),min:0,hl:[LIMIT,'Limit 600 mSv (illustrative)'],zones:[[0,300,'#46e08c','Safe (0 to 300)'],[300,480,'#ffbe3d','Caution (300 to 480)'],[480,2e4,'#ff6b6b','Danger (over 480)']],zmax:LIMIT*1.1,cap:cap+` Now at ${f1(c)} mSv, in the ${c<300?'safe':c<480?'caution':'danger'} zone.`})}`}
+function bars(){const ks=Object.keys(MI),v=ks.map(k=>MI[k].len*(MI[k].n+MI[k].o)),mx=Math.max(...v,LIMIT)*1.1;let g='';
+ ks.forEach((k,i)=>{const h=v[i]/mx*150,x=60+i*100;g+=`<rect x="${x}" y="${170-h}" width="60" height="${h}" fill="${k==S.mission?'#6db3ff':'#8aa'}"/><text x="${x+30}" y="${164-h}" text-anchor="middle">${Math.round(v[i])}</text><text x="${x+30}" y="186" text-anchor="middle">${k}</text>`});
+ g+=`<line x1="50" x2="390" y1="${170-LIMIT/mx*150}" y2="${170-LIMIT/mx*150}" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="6 4"/><text transform="translate(10 100) rotate(-90)" text-anchor="middle">Total dose, mSv</text><text x="220" y="199" text-anchor="middle">Mission (full length)</text>`;
+ const m=ks.find(k=>MI[k].len*(MI[k].n+MI[k].o)>LIMIT);
+ return `<figure><figcaption>Expected total dose by mission</figcaption><svg viewBox="0 0 400 205" role="img" aria-label="Expected total dose by mission">${g}</svg><div class="lg"><i style="background:#6db3ff"></i>Selected mission<i style="background:#ff6b6b"></i>Limit 600 mSv (illustrative)</div><p class="cap"><b>What this means:</b> Expected dose = (neutron + other mSv/day) x mission length. ${m?m+' is expected to exceed the limit.':'No mission exceeds the limit.'}</p></figure>`}
+function missionCard(){const M=MI[S.mission];return `<div class="card"><h2>Mission: ${S.mission}</h2><p>Day ${S.day}. Distance: ${M.dist}. One-way delay: ${M.d} s demo (real: ${M.real}). Dose: ${f1(M.n)} neutron + ${f1(M.o)} other mSv/day. Isolation: ${M.iso}. The link to the spacecraft changes at random: it can be Strong, Weak or Lost at any time.</p><p><small>${NOTE}</small></p></div>`}
+function logCard(r){return `<div class="card wide"><h2>Explanation log (newest first)</h2><div class="log">${S.log.filter(l=>l.r=='both'||l.r==r).map(l=>`<p><small>${clk(l.at)} day ${l.day}</small> ${esc(l.t)}</p>`).join('')}</div></div>`}
+function latestRx(i){return S.rx.filter(p=>p.i==i).sort((a,b)=>b.d-a.d||b.rxAt-a.rxAt)[0]}
+function crewSel(v,fn){return `<label>Crew <select id="crew" onchange="${fn}(+this.value)">${CREW.map((c,i)=>`<option value="${i}"${i==v?' selected':''}>${c.n}</option>`).join('')}</select></label>`}
+
+
+/* ===== 7b. CREW OVERVIEW (top of both dashboards): per-astronaut dose, live vitals, suggestions ===== */
+const DZ=c=>c<300?['Safe','ok']:c<480?['Caution','wn']:['Danger','cr'];
+function doseOf(i){const n=S.dose.n.length,M=MI[S.mission],f=CREW[i].df,base=(M.n+M.o)*f,td=(S.dose.n[n-1]+S.dose.o[n-1])*f,cum=tot()*f;return {base,td,cum,pct:cum/LIMIT*100,spike:td>2*base}}
+function recs(i){const D=doseOf(i),H=S.H[i],h=H[H.length-1],r=[],a=H.slice(-3).map(x=>x.hr),b=H.slice(-10,-3).map(x=>x.hr);
+ if(D.spike)r.push(['cr','Extra radiation now ('+f1(D.td)+' mSv today, over 2x normal). Do NOT go outside or on a spacewalk. Move to the shielded module.'],['cr','Take the radiation-protection medicine and supplements prescribed by the flight surgeon, and drink plenty of water.'],['cr','Quarantine in the shielded area. Stay away from outer modules until Ground says it is clear.']);
+ if(D.cum>=480)r.push(['cr','Danger zone ('+f1(D.cum)+' mSv total). Stop all spacewalks, stay in the low-dose area, request an urgent medical review.']);
+ else if(D.cum>=300)r.push(['wn','Caution zone ('+f1(D.cum)+' mSv total). Limit time outside, sleep in the shielded quarters, take antioxidant supplements as advised by the doctor.']);
+ if(h.sp<95)r.push(['wn','Blood oxygen low ('+h.sp+' %). Rest, check the sensor and cabin air, measure again in 1 hour.']);
+ if(h.sl<6)r.push(['wn','Short sleep ('+h.sl+' h). Protect an 8 h sleep window, dim the lights.']);
+ if(b.length>=3&&mean(a)-mean(b)>5)r.push(['wn','Heart rate is rising (+'+f1(mean(a)-mean(b))+' bpm). Reduce exercise intensity and report resting heart rate.']);
+ if(!r.length)r.push(['info','All normal. Routine work and exercise allowed. Spacewalks allowed.']);
+ return r}
+function crewTop(stale,g){const lv=S.live,M=MI[S.mission];
+ const cards=CREW.map((c,i)=>{const D=doseOf(i),z=DZ(D.cum),st=D.spike?['cr','SPIKE']:z[1]=='ok'?['ok','Normal']:[z[1],z[0]],H=S.H[i],h=H[H.length-1],hr=lv?lv.v[i].hr:h.hr,sp=lv?lv.v[i].sp:h.sp,ini=c.n.split(' ').map(x=>x[0]).join('');
+  return `<div class="crew c-${st[0]}"><div class="ch"><span class="av">${ini}</span><div><b>${c.n}</b><br><small>Day ${S.day} in space</small></div>${badge(st[0],st[1])}</div>
+  <div class="dg"><div><small>Dose today</small><div class="num">${f1(D.td)} <span class="unit">mSv</span></div></div><div><small>Total dose</small><div class="num">${f1(D.cum)} <span class="unit">mSv</span></div></div></div>
+  <div class="dbar" role="meter" aria-valuenow="${Math.round(D.pct)}" aria-valuemin="0" aria-valuemax="100" aria-label="${c.n} dose as percent of limit"><i style="width:${Math.min(100,D.pct)}%;background:var(--${z[1]});color:var(--${z[1]})"></i><u style="left:50%"></u><u style="left:80%"></u></div>
+  <small>${f1(D.pct)} % of the 600 mSv limit. ${z[0]} zone.</small>
+  <div class="vt"><span>Heart ${hr} bpm</span><span>SpO2 ${sp} %</span><span>Sleep ${h.sl} h</span></div>
+  ${riskBlock(i,g)}<h3>Suggestions</h3>${recs(i).map(x=>`<div class="al s-${{cr:'critical',wn:'warning',info:'info'}[x[0]]}">${x[1]}</div>`).join('')}</div>`}).join('');
+ return `<div class="card wide${stale?' stale':''}"><h2>Crew in space: dose and live health ${badge(stale?'cr':'ok',stale?'LAST KNOWN':'LIVE')}</h2>
+  <p class="cap">${stale?'Link lost. These are the last values known, they may no longer be true. ':''}Health is measured 2 times per mission day (morning and evening). ${lv?'Check '+lv.n+' of 2 for day '+lv.d+' ('+(lv.slot?'evening':'morning')+'), updated '+clk(lv.at)+'.':'Waiting for the first check.'} Dose per person is simulated from the shared cabin dose.</p>
+  <div class="crewg">${cards}</div></div>`}
+/* ===== 8. ASTRONAUT DASHBOARD ===== */
+function astroHTML(){const i=selA,h=S.H[i],x=h[h.length-1],R=risks(i),L=S.link;
+ const rb=Object.keys(RN).map(k=>{const s=R[k].s,v=lvl(s);return `<button class="rb" onclick="why('r:${k}')" aria-label="${RN[k]} risk ${v[0]}. Open explanation"><span>${RN[k]}</span><span class="bar"><i style="width:${s}%;background:var(--${v[1]});color:var(--${v[1]})"></i></span><span>${v[0]}</span></button>`}).join('');
+ const lost=L.st=='Lost';
+ return (lost?`<p class="ban cr flash" role="alert">Link lost. Working in offline mode. Health packets are queued (${S.queue.length}).</p>`:'')+
+ `<main>${tabNav()}${scanCard(0)}${gsCard()}${crewTop(false)}${missionCard()}
+ <div class="card"><h2>Own health, ${CREW[i].n} (day ${x.d})</h2>${crewSel(i,'setA')}<div class="cards">${mini('Heart rate',x.hr,'bpm','v:hr')}${mini('Sleep',x.sl,'h','v:sl')}${mini('SpO2',x.sp,'%','v:sp')}${mini('Exercise',x.ex,'min','v:ex')}</div></div>
+ <div class="card"><h2>Risk levels (select a bar for "Why this level?")</h2>${rb}<p class="cap"><b>What this means:</b> Overall risk is ${lvl(R.overall.s)[0]}. The biggest part is ${Object.keys(RN).filter(k=>k!='overall').sort((a,b)=>R[b].s-R[a].s).map(k=>RN[k]).shift()}. Text label and bar length both show the level.</p></div>
+ <div class="card">${vchart(i,'hr','Resting heart rate','Heart rate, bpm',50,85,'#ffbe3d','bpm')}</div>
+ <div class="card">${vchart(i,'sl','Sleep','Sleep, hours',7,9,'#6db3ff','h')}</div>
+ <div class="card">${vchart(i,'sp','Blood oxygen (SpO2)','SpO2, %',95,100,'#46e08c','%')}</div>
+ <div class="card">${vchart(i,'ex','Exercise','Exercise, minutes per day',30,120,'#e8bd74','min')}</div>
+ <div class="card wide">${radPanel(i)}</div>
+ <div class="card"><h2>Local alerts (work without Earth)</h2>${S.alerts.slice(0,8).map(a=>`<div class="al s-${a.sev}"><b>${badge(a.sev,a.sev.toUpperCase())} Day ${a.d}, ${a.c}: ${a.rule}</b><br>Rule: ${a.thr}. Actual: ${a.act}.<br>Likely cause: ${a.cause}.<br>Action: ${a.action}.</div>`).join('')||'<p>No alerts yet. Rules: SpO2 under 95, sleep under 6 h, heart rate trend rising, dose spike.</p>'}</div>
+ <div class="card"><h2>Link status ${whyB('l:x')}</h2><div class="num">${badge({Strong:'ok',Weak:'wn',Lost:'cr'}[L.st],L.st)} ${L.pct}%</div><div class="bar" role="meter" aria-valuenow="${L.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Signal strength"><i style="width:${L.pct}%;background:var(--${{Strong:'ok',Weak:'wn',Lost:'cr'}[L.st]})"></i></div>
+  <p>Latency: ${L.lat?f1(L.lat)+' s one-way':'no link'}. Packet loss: ${L.loss}%.<br>Reason: ${L.why}.</p><h3>Offline queue (${S.queue.length})</h3>${S.queue.slice(0,6).map(p=>`<div class="al s-warning">${CREW[p.i].n}, day ${p.d}, ${p.kind}. Waiting for link.</div>`).join('')||'<p>Empty. Packets go straight to Earth.</p>'}
+  <p class="cap"><b>What this means:</b> ${lost?'Nothing reaches Earth. Data waits here and is sent when the link returns.':L.st=='Weak'?'Some packets are dropped and slowed. Dropped packets wait for a Strong link.':'Packets reach Earth after the delay.'}</p></div>
+ 
+ <div class="card"><h2>Actions</h2><div class="row"><button onclick="act(()=>{sendPkt(mkPkt(selA,'report'));E('astro','Health report for '+CREW[selA].n+' sent by the astronaut.')})">Send health report to Earth</button><button onclick="act(()=>{sendPkt(mkPkt(selA,'sos'));S.alerts.unshift({d:S.day,c:CREW[selA].n,rule:'Emergency help (SOS) requested',thr:'manual',act:'pressed',cause:'Crew request',action:'Wait for Ground reply; follow onboard emergency checklist',sev:'critical'});E('astro','SOS sent by '+CREW[selA].n+'. '+(S.link.st=='Lost'?'It is queued because the link is lost.':'It is travelling to Earth.'))})">Emergency help (SOS)</button></div>
+ <h3>Fault simulators</h3><div class="row"><button onclick="act(()=>{S.fl.sleep=S.day+3;E('astro','Sleep-loss fault for 3 days: sleep -2.4 h, heart rate +6 bpm.')})">Sleep loss</button><button onclick="act(()=>{S.fl.spe=S.day+3;E('both','Solar particle event for 3 days: neutron dose x6, other x3, link -10%.')})">Solar particle event</button><button onclick="act(()=>{S.fl.tread=S.day+4;E('astro','Treadmill failure for 4 days: exercise x0.15, heart rate +3 bpm.')})">Treadmill failure</button></div></div>
+ ${logCard('astro')}</main>`}
+
+/* ===== 9. GROUND DASHBOARD ===== */
+function groundHTML(){const L=S.link,M=MI[S.mission],c={Strong:'ok',Weak:'wn',Lost:'cr'}[L.st];
+ const sos=S.rx.filter(p=>p.kind=='sos').slice(-1)[0];TP=[];
+ const rows=CREW.map((cr,i)=>{const p=latestRx(i);if(!p)return `<tr><td>${cr.n}</td><td colspan="5">No data received yet</td></tr>`;const age=S.day-p.d,v=lvl(p.rs.overall);
+  const st=L.st=='Lost'?`<span class="b b-${age>3?'cr':'wn'}">Last update: day ${p.d}, now stale</span>`:age>1?badge('wn','Delayed '+age+' days'):badge('ok','Current');
+  return `<tr><td>${cr.n}</td><td>HR ${p.hr}, sleep ${p.sl} h, SpO2 ${p.sp}%, ex ${p.ex} min</td><td>${badge(v[1],v[0])} ${whyB('g:'+i)}</td><td>Day ${p.d}, ${f1((Date.now()-p.rxAt)/1000)} s since received. ${st}</td><td>${p.late?badge('wn','LATE from queue'):'On time'}</td></tr>`}).join('');
+ const p=latestRx(selC);if(p){if(p.rs.sleep>=40)TP.push(['Start sleep review','Sleep risk is '+lvl(p.rs.sleep)[0]+' in the day '+p.d+' packet']);if(p.rs.radiation>=40)TP.push(['Shelter in the shielded module during solar activity','Radiation risk is '+lvl(p.rs.radiation)[0]+' in the day '+p.d+' packet']);if(p.rs.cardio>=40)TP.push(['Reduce exercise intensity and report resting heart rate','Cardiovascular risk is '+lvl(p.rs.cardio)[0]+' in the day '+p.d+' packet']);}
+ if(!TP.length)TP.push(['Routine check-in: please confirm status','No received risk level is elevated, so this is routine']);
+ return (L.st=='Weak'?`<p class="ban wn flash" role="alert">Warning: signal weak (${L.pct}%). ${L.why}</p>`:L.st=='Lost'?`<p class="ban cr flash" role="alert">Critical: signal lost. ${L.why}. Commands cannot be delivered.</p>`:'')+
+ (sos?`<p class="ban cr" role="alert">SOS received from ${CREW[sos.i].n} (sent day ${sos.d}${sos.late?', arrived late from queue':''}). Contact the crew and review their latest data.</p>`:'')+
+ `<main>${scanCard(1)}${crewTop(L.st=='Lost',1)}${missionCard()}
+ <div class="card wide"><h2>Signal: Earth to spacecraft ${whyB('l:x')}</h2>
+  <p class="num">${badge(c,L.st)} ${L.pct}% <span class="unit">strength, latency ${L.lat?f1(L.lat)+' s':'none'}, packet loss ${L.loss}%</span></p><div class="bar" role="meter" aria-valuenow="${L.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Signal strength"><i style="width:${L.pct}%;background:var(--${c})"></i></div>
+  <p><b>Why is the signal like this?</b> ${L.why}.</p><canvas id="cv" width="800" height="150" role="img" aria-label="Animated signal travelling from Earth to the spacecraft"></canvas><div class="row"><button onclick="act(doPing)">Ping spacecraft</button><button onclick="act(()=>{S.storm=!S.storm;E('both','Solar storm interference turned '+(S.storm?'ON (-30% signal)':'OFF')+'.')})" aria-pressed="${S.storm}">Solar storm interference: ${S.storm?'ON':'OFF'}</button><button onclick="act(()=>{S.block=!S.block;E('both','Antenna blocked turned '+(S.block?'ON (-100% signal, link lost)':'OFF')+'.')})" aria-pressed="${S.block}">Antenna blocked: ${S.block?'ON':'OFF'}</button></div>
+  <div class="log">${S.pings.slice(0,5).map(x=>`<p><small>${clk(x.at)}</small> ${x.t}</p>`).join('')||'<p>Ping log is empty.</p>'}</div>
+  <p class="cap"><b>What this means:</b> ${L.st=='Strong'?'Packets travel the full path. Commands arrive after the delay.':L.st=='Weak'?'Packets are slower and some are dropped before they arrive.':'The wave breaks before reaching the spacecraft. Nothing is delivered.'}</p></div>
+ <div class="card wide"><h2>Crew monitor (data as received on Earth)</h2><div class="sc"><table><tr><th>Crew</th><th>Last received vitals</th><th>Overall risk</th><th>Reading age</th><th>Arrival</th></tr>${rows}</table></div><p class="cap"><b>What this means:</b> ${L.st=='Lost'?'No new data is arriving. Values above are the last ones received and may no longer be true.':'Readings are one signal delay old, plus any wait in the offline queue.'}</p>
+  <div class="row"><button onclick="exp('csv')">Export CSV</button><button onclick="exp('json')">Export JSON</button></div></div>
+ <div class="card">${radPanel(0)}</div>
+ <div class="card"><h2>Command panel</h2>${crewSel(selC,'setC')}<div class="row"><select id="cty" aria-label="Type"><option>Message</option><option>Instruction</option></select></div><textarea id="ctx" rows="3" style="width:100%" aria-label="Text to send" placeholder="Type a message or instruction"></textarea>
+  <div class="row"><button onclick="sendCmd()">Send</button></div><h3>Quick advice from the latest received risk data</h3>${TP.map((t,k)=>`<button class="why" onclick="useT(${k})">${t[0]}</button><small> Reason: ${t[1]}</small><br>`).join('')}
+  <h3>Sent commands</h3>${S.cmds.slice(0,5).map(m=>`<div class="al s-${/Not/.test(m.status)?'critical':'info'}"><b>${esc(m.text)}</b> to ${CREW[m.to].n}<br>Sent ${clk(m.at)}. Status: ${m.status}. Expected delay ${m.lat?f1(m.lat)+' s':'n/a'}.</div>`).join('')||'<p>None yet.</p>'}</div>
+ ${logCard('ground')}</main>`}
+function doPing(){const L=S.link;let t;if(L.st=='Lost')t='Ping failed: Request timed out because the link is lost.';else if(L.st=='Weak'&&Math.random()*100<L.loss)t='Ping failed: packet dropped on the weak link ('+L.loss+'% loss).';else t='Reply received. Round trip '+f1(2*L.lat)+' s (2 x one-way latency '+f1(L.lat)+' s).';S.pings.unshift({at:Date.now(),t});E('ground',t)}
+function sendCmd(){const to=selC,txt=$('ctx').value.trim();if(!txt)return;const L=S.link,id=Date.now(),type=$('cty').value;
+ act(()=>{let st='In transit';if(L.st=='Lost')st='Not delivered, link lost';else if(L.st=='Weak'&&Math.random()*100<L.loss)st='Not delivered, dropped on weak link. Send again.';
+  S.cmds.unshift({id,to,text:type+': '+txt,at:id,status:st,lat:L.lat});if(st=='In transit')S.mf.push({id,to,text:type+': '+txt,sentAt:id,sentDay:S.day,due:id+L.lat*1000,reason:tplReason});
+  E('ground',type+' to '+CREW[to].n+': '+st+(st=='In transit'?'. It will arrive in about '+f1(L.lat)+' s.':'.'));tplReason=''})}
+function useT(k){$('ctx').value=TP[k][0];tplReason=TP[k][1]}
+function exp(t){const r=S.rx.filter(p=>!p.pre).length?S.rx.filter(p=>!p.pre):S.rx;let s,n;
+ if(t=='json'){s=JSON.stringify(r.map(p=>{const {rs,...q}=p;return {crew:CREW[p.i].n,...q}}),null,1);n='received.json'}
+ else{s='crew,day,hr,sleep,spo2,exercise,generated,received,late\n'+r.map(p=>[CREW[p.i].n,p.d,p.hr,p.sl,p.sp,p.ex,new Date(p.gen).toISOString(),new Date(p.rxAt).toISOString(),p.late?1:0].join(',')).join('\n');n='received.csv'}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s]));a.download=n;a.click()}
+
+/* ===== 10. SIGNAL ANIMATION (canvas, requestAnimationFrame) ===== */
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function anim(t){const cv=$('cv');if(cv&&S&&view=='ground'){const x=cv.getContext('2d'),W=cv.width,H=cv.height,L=S.link,fr={ISS:.08,Moon:.5,Mars:1}[S.mission],sx=130+fr*(W-210),y=H/2,col={Strong:'#46e08c',Weak:'#ffbe3d',Lost:'#ff6b6b'}[L.st];
+ x.clearRect(0,0,W,H);x.fillStyle='#2b6cc4';x.beginPath();x.arc(60,y,34,0,7);x.fill();x.fillStyle='#3aa66a';x.fillRect(48,y-14,20,14);x.fillStyle='#fff';x.font='13px sans-serif';x.fillText('Earth',34,y+56);
+ x.fillStyle='#ddd';x.fillRect(sx-12,y-8,24,16);x.fillRect(sx-30,y-3,16,6);x.fillRect(sx+14,y-3,16,6);x.fillText('Spacecraft',sx-30,y+56);
+ x.strokeStyle=col;x.setLineDash([6,6]);x.beginPath();x.moveTo(94,y);x.lineTo(sx-32,y);x.stroke();x.setLineDash([]);
+ const len=sx-32-94,dur=L.st=='Lost'?2500:600+(L.lat||1)*1000;
+ if(!still&&t-lastSpawn>Math.max(300,Math.min(1200,dur/5))){lastSpawn=t;dots.push({t0:t,dur,die:L.st=='Lost'?.5:(L.st=='Weak'&&Math.random()*100<L.loss?.35+Math.random()*.4:2)})}
+ dots=dots.filter(d=>(t-d.t0)/d.dur<Math.min(1,d.die+.01));
+ dots.forEach(d=>{const p=(t-d.t0)/d.dur;x.fillStyle=col;x.beginPath();x.arc(sx-32-p*len,y,6,0,7);x.fill();if(p>=d.die-.03){x.strokeStyle=col;x.lineWidth=3;x.beginPath();x.moveTo(sx-32-d.die*len-8,y-12);x.lineTo(sx-32-d.die*len+8,y+12);x.moveTo(sx-32-d.die*len+8,y-12);x.lineTo(sx-32-d.die*len-8,y+12);x.stroke();x.lineWidth=1}});
+ x.fillStyle=col;x.fillText(L.st+' '+L.pct+'%'+(L.st=='Lost'?'  (wave breaks before the spacecraft)':''),W/2-60,24)}
+ requestAnimationFrame(anim)}
+
+/* ===== 11. GUIDED DEMO, ASSUMPTIONS, LOGIN, RENDER ===== */
+let DEMO=[];
+/* Every press builds a NEW random scenario: random mission, random daily noise, random mix and order of events, random crew member, random timing. */
+function buildDemo(){
+ const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[R(0,a.length-1)];
+ const mission=pick(Object.keys(MI)),seed=R(1,9999);
+ const msgs=['Stay in the shielded module until the link is restored.','Hold all spacewalks until further notice.','Report your resting heart rate when the link returns.','Keep to the sleep schedule and rest.','Check the cabin air filters and confirm.'];
+ const pool=[
+  ()=>{const n=R(2,4);return ['Solar particle event','Radiation burst for '+n+' days: neutron dose x6, other x3, signal -10%. Watch for a dose-spike alert.',R(8,11),()=>{S.fl.spe=S.day+n;E('both','Demo: solar particle event started for '+n+' days.')}]},
+  ()=>['Solar storm','Solar storm interference adds -30% signal penalty. The link may turn Weak: slower packets, some dropped.',R(8,11),()=>{S.storm=true;E('both','Demo: solar storm interference started.')}],
+  ()=>{const i=R(0,2),tx='Message: '+pick(msgs);return ['Signal lost, astronaut offline','Antenna blocked. The link is Lost, '+CREW[i].n+' works offline and packets pile up in the queue.',R(9,12),()=>{const id=Date.now();S.cmds.unshift({id,to:i,text:tx,at:id,status:'In transit',lat:S.link.lat||1});S.mf.push({id,to:i,text:tx,sentAt:id,sentDay:S.day,due:id+1500,reason:'Demo: sent just before the link was lost'});S.block=true;E('both','Demo: antenna blocked. A Ground message sent just now will be held until the link returns.')},'astro']},
+  ()=>{const n=R(2,4);return ['Sleep loss fault','Sleep-loss fault for '+n+' days: sleep -2.4 h, heart rate +6 bpm for all crew.',R(8,10),()=>{S.fl.sleep=S.day+n;E('astro','Demo: sleep-loss fault for '+n+' days.')}]},
+  ()=>{const n=R(3,5);return ['Treadmill failure','Treadmill failure for '+n+' days: exercise drops, heart rate +3 bpm.',R(8,10),()=>{S.fl.tread=S.day+n;E('astro','Demo: treadmill failure for '+n+' days.')}]},
+  ()=>{const i=R(0,2);return ['SOS from '+CREW[i].n,CREW[i].n+' presses the emergency button. Ground sees an SOS banner once the packet arrives.',R(8,10),()=>{sendPkt(mkPkt(i,'sos'));S.alerts.unshift({d:S.day,c:CREW[i].n,rule:'Emergency help (SOS) requested',thr:'manual',act:'pressed',cause:'Crew request',action:'Wait for Ground reply; follow onboard emergency checklist',sev:'critical'});E('astro','Demo: SOS sent by '+CREW[i].n+'.')}]},
+  ()=>{const n=R(3,8);return ['Time jump +'+n+' days','The mission jumps ahead '+n+' days so trends and doses change.',R(7,9),()=>{for(let k=0;k<n&&S.day<MI[S.mission].len;k++){newDay();updateLink()}E('both','Demo: jumped ahead '+n+' days.')}]}
+ ];
+ for(let k=pool.length-1;k>0;k--){const j=R(0,k);[pool[k],pool[j]]=[pool[j],pool[k]]}
+ const steps=[['Random mission start','Random '+mission+' mission (180 days) with random daily variation and a random 40 to 50 day strong-link window. Everything below is picked at random for this run.',R(6,9),()=>{init(mission,seed)}]];
+ pool.slice(0,R(3,4)).forEach(f=>steps.push(f()));
+ steps.push(['Recovery','Storm and blockage end (the link stays Weak because the strong window is over). If packets were queued, they are sent oldest first and arrive flagged LATE.',R(8,10),()=>{S.block=false;S.storm=false;S.rl.storm=0;S.rl.block=0;S.rl.noise=0;E('both','Demo: interference cleared.')}]);
+ steps.push(['Ground Control checks the data','Look at the Crew monitor on Ground Control: arrival times, LATE flags and any SOS banner.',9,()=>{},'ground']);
+ steps.push(['Demo finished','Press Guided Demo again for a completely different random scenario.',0,()=>{}]);
+ return steps}
+function runDemo(k=0){demoT.forEach(clearTimeout);demoT=[];if(k==0)DEMO=buildDemo();const s=DEMO[k];act(()=>{s[3]();S.demo={t:'Demo step '+(k+1)+' of '+DEMO.length+': '+s[0],x:s[1]};E('both','Guided demo, '+s[0]+': '+s[1]);
+  if(!BC&&s[4])view=s[4];applyTheme()});
+ if(s[2])demoT.push(setTimeout(()=>runDemo(k+1),s[2]*1000));else demoT.push(setTimeout(()=>act(()=>{S.demo=null}),9000))}
+function assume(){const M=MI[S.mission];$('dlgc').innerHTML=`<h2>Assumptions (all simulated / illustrative)</h2><ul><li>All data is simulated. Dose limit 600 mSv is illustrative only.</li><li>${Object.keys(MI).map(k=>`${k}: ${f1(MI[k].n)} neutron + ${f1(MI[k].o)} other mSv/day, delay ${MI[k].d} s (real ${MI[k].real}), isolation ${MI[k].iso}`).join('; ')}</li><li>One simulated day = 3 real seconds. Daily noise is about 10% on dose and small on vitals.</li><li>Normal ranges: heart rate 50 to 85 bpm, sleep 7 to 9 h, SpO2 95 to 100 %, exercise 30 to 120 min.</li><li>Alert rules: SpO2 under 95, sleep under 6 h, heart rate 3-day mean over 5 bpm above prior 7 days, dose over 2x normal.</li><li>The link is Strong for the first 40 to 50 days (random per run), then a coverage-gap penalty of 40 applies.</li><li>Signal = 100 minus penalties: distance (ISS 5, Moon 15, Mars 35), solar storm 30, solar particle event 10, antenna blocked 100. Strong 60+, Weak 25 to 59, Lost under 25.</li><li>Dose zones: safe under 300, caution 300 to 480, danger over 480 mSv.</li><li>Risk levels (Low, Moderate, High) use the rules shown in each Why panel.</li></ul>`;$('dlg').showModal()}
+function login(e){e.preventDefault();const u=USERS[$('u').value.trim()];if(!u||u.p!=$('p').value){$('err').textContent='Wrong username or password. Use a demo account shown below.';return false}
+ role=view=u.role;try{sessionStorage.setItem('dslmRole',role)}catch(x){}start();return false}
+function showLogin(){$('login').hidden=false;$('app').hidden=true;document.body.className='';$('login').innerHTML=`<h1>Deep Space Live Monitor</h1><p>Sign in to open your dashboard.</p><form onsubmit="return login(event)"><label for="u">Username</label><input id="u" autocomplete="off"><label for="p">Password</label><input id="p" type="password"><p id="err" class="err" role="alert"></p><button>Sign in</button></form><p><b>Demo accounts:</b><br>ground / ground123 (Ground Control)<br>astro / astro123 (Astronaut)</p><p><small>Demo login only. Credentials are stored in the page, so this is not real security. ${NOTE}</small></p>`}
+function start(){$('login').hidden=true;$('app').hidden=false;if(!S)init('ISS');applyTheme();render()}
+function applyTheme(){document.body.className=view=='astro'?'astro':''}
+function logout(){role=view=null;try{sessionStorage.removeItem('dslmRole')}catch(x){}showLogin()}
+const setA=v=>{selA=v;render()},setC=v=>{selC=v;render()};
+function render(){if(!role||!S)return;const sy=window.scrollY,ap=$('app');ap.style.minHeight=ap.offsetHeight+'px'; /* keeps page height so scroll does not jump to top */
+ const ae=document.activeElement,id=ae&&ae.id,val=ae&&ae.value,txt=$('ctx')&&$('ctx').value,ty=$('cty')&&$('cty').value;applyTheme();
+ const g=view=='ground';
+ $('app').innerHTML=`<header><div class="brand"><span class="logo">◉</span><h1>Deep Space <b>Live Monitor</b></h1></div><span class="role">${g?'Ground Control (Earth)':'Astronaut (spacecraft)'}</span><span class="pill ${{Strong:'ok',Weak:'wn',Lost:'cr'}[S.link.st]}"><i></i>${S.link.st} ${S.link.pct}% · Day ${S.day}</span><span class="pill ${connInfo(g)[0]}"><i></i>${connInfo(g)[1]}</span><span class="sp"></span>
+ ${g?`<label>Mission <select id="mis" onchange="act(()=>{init(this.value)})">${Object.keys(MI).map(m=>`<option${m==S.mission?' selected':''}>${m}</option>`).join('')}</select></label>`:''}
+ </header><div class="ctl">${ctl(g)}</div>
+ ${S.demo?`<p class="ban dm" role="status"><b>${S.demo.t}.</b> ${S.demo.x}</p>`:''}<p class="ban dm" style="font-weight:400">${NOTE} ${BC?'Open this file in a second tab to see both roles live.':''}</p>`+(g?groundHTML():astroHTML());
+ applyTabs();updateScan();if(id&&$(id)){const e=$(id);if(val!=null&&'value' in e&&e.tagName!='BUTTON')e.value=val;e.focus({preventScroll:true})}
+ if($('ctx')&&txt)$('ctx').value=txt;if($('cty')&&ty)$('cty').value=ty;
+ window.scrollTo(0,sy);ap.style.minHeight=''}
+
+/* ===== 13. SCAN TIMER, CONTROL BAR, TABS (v3) ===== */
+const mmss=ms=>{const t=Math.ceil(Math.max(0,ms)/1000);return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')};
+function cbtn(id,label,hint,fn){return `<button id="${id}" class="cb" onclick="${fn}"><b>${label}</b><small>${hint}</small></button>`}
+function ctl(g){return cbtn('bp',S.paused?'&#9654; Resume':'&#9208; Pause','Stops the simulated days and the scan timer. Press again to continue.',"act(()=>{S.paused=!S.paused})")+
+ cbtn('b10','&#9193; Skip +10 Days','Jumps the mission ahead by 10 days to see long-term changes.',"act(()=>{for(let k=0;k<10&&S.day<MI[S.mission].len;k++){newDay();updateLink()}})")+
+ cbtn('bd','&#127916; Guided Demo','Plays a NEW random scenario each time: random mission, random events, random crew.',"runDemo()")+
+ cbtn('ba','&#8505; Assumptions','Shows what is simulated and how the numbers are made.',"assume()")+
+ cbtn('bv','&#8644; Switch to '+(g?'Astronaut':'Ground Control')+' View','Changes which role&#39;s dashboard you are looking at.',"role=view=(view=='ground'?'astro':'ground');render()")}
+function connInfo(g){const st=S.link.st;return st=='Lost'?['cr',g?'Spacecraft not connected':'Not connected with Ground Station']:st=='Weak'?['wn',g?'Spacecraft connected (weak)':'Connected with Ground Station (weak)']:['ok',g?'Spacecraft connected':'Connected with Ground Station']}
+function gsCard(){const L=S.link,c=connInfo(0),held=S.mf.filter(m=>m.due<=Date.now()).length,lost=L.st=='Lost';
+ return `<div class="card wide"><h2>Ground Station Response ${badge(c[0],lost?'OFFLINE':'ONLINE')}</h2><div class="gsrow"><span class="pill ${c[0]}"><i></i>${c[1]}</span><span>Signal ${L.pct}% &middot; ${L.lat?'one-way delay '+f1(L.lat)+' s':'no link'}</span></div>
+ <p class="cap"><b>What this means:</b> ${lost?'No messages can be received while the link is lost. '+(held?held+' message(s) from Ground are on hold and will arrive when the link returns.':'Messages sent by Ground will arrive when the link returns.'):L.st=='Weak'?'The link is weak. Messages from Ground arrive slowly.':'Messages from Ground Control arrive here after the signal delay.'}</p>
+ ${S.inbox.slice(0,6).map(m=>`<div class="al s-info"><b>Ground to ${CREW[m.to].n}: ${esc(m.text)}</b><br>Sent ${clk(m.sentAt)} (day ${m.sentDay}), received ${clk(m.recvAt)} (day ${m.recvDay}).<br>Reason: ${esc(m.reason||'none')}</div>`).join('')||'<p>No messages received yet.</p>'}</div>`}
+function newScan(){const n=Date.now();return {int:SCANMS,tp:n,a:CREW.map((c,i)=>({next:n+SCANMS*(i+1)/3,last:null,count:0,busy:0,res:null}))}}
+function finishScan(i,now){const x=S.scan.a[i],h=S.H[i][S.H[i].length-1];x.last=now;x.count++;x.busy=0;x.next=now+S.scan.int;
+ x.res={hr:Math.round(h.hr+rnd(S.day,i,50+x.count)*2),sp:Math.round((h.sp+rnd(S.day,i,60+x.count)*.3)*10)/10,sl:h.sl,ex:h.ex,ov:risks(i).overall.s};
+ const pk=mkPkt(i,'scan');pk.res=x.res;sendPkt(pk);E('astro',CREW[i].n+' scan finished: heart '+x.res.hr+' bpm, SpO2 '+x.res.sp+' %. Report sent to Earth. Next scan in '+S.scan.int/1000+' s.')}
+const latestScan=i=>S.rx.filter(p=>p.i==i&&p.kind=='scan'&&p.res).sort((a,b)=>b.gen-a.gen)[0];
+function scanCard(g){const sc=S.scan;if(!sc||!sc.a)return '';const lost=S.link.st=='Lost';
+ const tiles=CREW.map((c,i)=>{const x=sc.a[i],p=g?latestScan(i):null,r=g?(p&&p.res):x.res,last=g?(p?p.gen:null):x.last,ini=c.n.split(' ').map(w=>w[0]).join(''),ov=r?lvl(r.ov):null;
+  return `<div class="stile${x.busy?' busy':''}"><div class="ch"><span class="av">${ini}</span><div><b>${c.n}</b><br><small>${x.busy?'Scanning now...':g&&lost?'Link lost, showing last received':'Auto scan every '+sc.int/1000+' s'}</small></div>${g?'':`<button class="why" onclick="act(()=>{S.scan.a[${i}].next=Date.now()})">Scan now</button>`}</div>
+  <div class="stT" id="scT${i}">--:--</div><small>time remaining to next scan</small><div class="bar" style="margin:.4rem 0 .6rem"><i id="scB${i}" style="width:0;background:var(--ac)"></i></div>
+  <div class="sinfo"><div><small>${g?'Last scan received':'Last scanned'}</small><b>${last?clk(last):'none yet'}</b></div><div><small>${g?'Next scan (scheduled)':'Next scan at'}</small><b>${clk(x.next)}</b></div></div>
+  <small>${g?'Latest scan result (as received on Earth)':'Latest scan result'}</small>
+  <div class="sres">${r?`<span>Heart ${r.hr} bpm</span><span>SpO2 ${r.sp} %</span><span>Sleep ${r.sl} h</span><span>Overall risk ${badge(ov[1],ov[0])}</span>`:'<span>Waiting for first scan</span>'}</div></div>`}).join('');
+ return `<div class="card wide scan" id="scanCard"><h2>Health Scans ${badge(g&&lost?'cr':'ok',g&&lost?'LAST KNOWN':'AUTO')}</h2><p class="cap">Each astronaut has their own scan schedule. A scan runs automatically once every ${sc.int/1000} seconds, measures heart rate and SpO2, and sends the result to Ground Control. ${g?'Ground sees each result only after the signal delay.':'Press Scan now to take one early.'}</p><div class="scg">${tiles}</div></div>`}
+function updateScan(){const sc=S&&S.scan;if(!sc||!sc.a)return;const now=Date.now();
+ sc.a.forEach((x,i)=>{const t=$('scT'+i);if(!t)return;const left=x.next-now;
+  t.textContent=x.busy?'Scanning...':S.paused?'Paused':mmss(left);$('scB'+i).style.width=(x.busy?100:Math.max(0,Math.min(100,(1-left/sc.int)*100)))+'%'})}
+const TABS=[['scan','&#129658; Scan &amp; Crew'],['health','&#10084; Health'],['rad','&#9762; Radiation'],['link','&#128225; Link &amp; Messages'],['act','&#9881; Actions &amp; Log']];
+function tabNav(){return `<nav class="tabs wide" aria-label="Dashboard sections">${TABS.map(t=>`<button class="tb" aria-pressed="${tab==t[0]}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')}</nav>`}
+const setTab=t=>{tab=t;render()};
+function tabOf(el){const t=((el.querySelector('h2,figcaption')||{}).textContent||'');
+ if(el.id=='scanCard'||/^Crew in space|^Mission|^Ground Station/.test(t))return 'scan';
+ if(/^Own health|^Risk levels|^Resting heart|^Sleep|^Blood oxygen|^Exercise/.test(t))return 'health';
+ if(/^Radiation/.test(t))return 'rad';
+ if(/^Link|^Local alerts|^Inbox/.test(t))return 'link';
+ return 'act'}
+function applyTabs(){if(view!='astro')return;const m=document.querySelector('#app main');if(!m)return;[...m.children].forEach(el=>{if(!el.classList.contains('tabs'))el.hidden=tabOf(el)!=tab})}
+function riskBlock(i,g){let R=null,rs;if(g){const p=latestRx(i);if(!p)return '<h3>Risk factors</h3><p class="cap">No risk data received yet.</p>';rs=p.rs}else R=risks(i);
+ return '<h3>Risk factors'+(g?' (as last received)':'')+'</h3>'+Object.keys(RN).map(k=>{const sc=R?R[k].s:rs[k],v=lvl(sc),pts=R?R[k].parts.map(p=>`<div>${p[0]}: <b>${p[1]}</b></div>`).join(''):'';
+  return `<div class="rf"><div class="rfh"><span>${RN[k]}</span><span class="bar"><i style="width:${sc}%;background:var(--${v[1]})"></i></span><span>${badge(v[1],v[0])}</span></div><div class="rfp">${pts}</div></div>`}).join('')}
+/* ===== 12. BOOT ===== */
+/* No login: opens Ground Control by default. Add #astro to the address to open the Astronaut view directly. */
+role=view=(location.hash=='#astro')?'astro':'ground';start();
+setInterval(tick,50);setInterval(updateScan,250);requestAnimationFrame(anim);
+</script></body></html>
